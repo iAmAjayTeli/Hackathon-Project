@@ -6,7 +6,13 @@ import {
   signOut,
   onAuthStateChanged,
   Auth,
-  User as FirebaseUser
+  User as FirebaseUser,
+  sendPasswordResetEmail as sendReset,
+  updateProfile as updateFirebaseProfile,
+  updatePassword as updateFirebasePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  sendEmailVerification as sendVerificationEmail
 } from 'firebase/auth';
 import { 
   getFirestore, 
@@ -24,6 +30,7 @@ import {
   QueryDocumentSnapshot
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL, FirebaseStorage } from 'firebase/storage';
+import { getAnalytics } from 'firebase/analytics';
 
 interface UserRole {
   role: 'admin' | 'supervisor' | 'agent';
@@ -31,10 +38,9 @@ interface UserRole {
 }
 
 interface AppUser {
-  id: string;
-  email: string;
-  role: string;
-  firebaseUser: FirebaseUser;
+  uid: string;
+  email: string | null;
+  displayName: string | null;
 }
 
 interface CallData extends DocumentData {
@@ -73,13 +79,19 @@ interface AdvancedAnalytics {
 }
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'demo-api-key',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'demo-auth-domain',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'demo-project-id',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'demo-storage-bucket',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || 'demo-messaging-sender-id',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || 'demo-app-id'
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+const auth = getAuth(app);
 
 class FirebaseService {
   private app: FirebaseApp;
@@ -95,56 +107,31 @@ class FirebaseService {
   }
 
   getCurrentUser(): AppUser | null {
-    const firebaseUser = this.auth.currentUser;
-    if (!firebaseUser) return null;
+    const user = this.auth.currentUser;
+    if (!user) return null;
     
     return {
-      id: firebaseUser.uid,
-      email: firebaseUser.email || '',
-      role: 'agent', // Default role, will be updated from Firestore
-      firebaseUser
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName
     };
   }
 
-  async signUp(email: string, password: string): Promise<AppUser> {
+  async signUp(email: string, password: string, name: string): Promise<void> {
     try {
       const userCredential = await createUserWithEmailAndPassword(this.auth, email, password);
-      const firebaseUser = userCredential.user;
-      
-      // Create user document in Firestore with default role
-      await setDoc(doc(this.db, 'users', firebaseUser.uid), {
-        email: firebaseUser.email,
-        role: 'agent',
-        permissions: ['make_calls', 'view_own_analytics']
+      await updateFirebaseProfile(userCredential.user, {
+        displayName: name
       });
-
-      return {
-        id: firebaseUser.uid,
-        email: firebaseUser.email || '',
-        role: 'agent',
-        firebaseUser
-      };
     } catch (error: any) {
       console.error('Sign up error:', error);
       throw new Error(error.message);
     }
   }
 
-  async signIn(email: string, password: string): Promise<AppUser> {
+  async signIn(email: string, password: string): Promise<void> {
     try {
-      const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
-      const firebaseUser = userCredential.user;
-      
-      // Get user role from Firestore
-      const userDoc = await getDoc(doc(this.db, 'users', firebaseUser.uid));
-      const userData = userDoc.data() as UserRole;
-
-      return {
-        id: firebaseUser.uid,
-        email: firebaseUser.email || '',
-        role: userData?.role || 'agent',
-        firebaseUser
-      };
+      await signInWithEmailAndPassword(this.auth, email, password);
     } catch (error: any) {
       console.error('Sign in error:', error);
       throw new Error(error.message);
@@ -160,25 +147,25 @@ class FirebaseService {
     }
   }
 
+  async sendPasswordResetEmail(email: string): Promise<void> {
+    try {
+      await sendReset(this.auth, email);
+    } catch (error: any) {
+      console.error('Password reset error:', error);
+      throw new Error(error.message);
+    }
+  }
+
   onAuthStateChange(callback: (user: AppUser | null) => void): () => void {
-    return onAuthStateChanged(this.auth, async (firebaseUser) => {
-      if (!firebaseUser) {
-        callback(null);
-        return;
-      }
-
-      try {
-        const userDoc = await getDoc(doc(this.db, 'users', firebaseUser.uid));
-        const userData = userDoc.data() as UserRole;
-
-        callback({
-          id: firebaseUser.uid,
-          email: firebaseUser.email || '',
-          role: userData?.role || 'agent',
-          firebaseUser
-        });
-      } catch (error) {
-        console.error('Error getting user data:', error);
+    return onAuthStateChanged(this.auth, (user: FirebaseUser | null) => {
+      if (user) {
+        const appUser: AppUser = {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName
+        };
+        callback(appUser);
+      } else {
         callback(null);
       }
     });
@@ -279,7 +266,7 @@ class FirebaseService {
       
       const querySnapshot = await getDocs(usersQuery);
       return querySnapshot.docs.map((doc: QueryDocumentSnapshot) => ({
-        id: doc.id,
+        uid: doc.id,
         ...doc.data()
       })) as AppUser[];
     } catch (error) {
@@ -523,6 +510,70 @@ class FirebaseService {
       positiveEmotions.includes(e.name.toLowerCase())
     ).length;
     return (positiveCount / emotions.length) * 100;
+  }
+
+  async updateProfilePicture(file: File): Promise<void> {
+    if (!this.auth.currentUser) {
+      throw new Error('No user is signed in');
+    }
+
+    try {
+      const storageRef = ref(this.storage, `profile_pictures/${this.auth.currentUser.uid}`);
+      await uploadBytes(storageRef, file);
+      const photoURL = await getDownloadURL(storageRef);
+      
+      await updateFirebaseProfile(this.auth.currentUser, {
+        photoURL
+      });
+    } catch (error: any) {
+      console.error('Update profile picture error:', error);
+      throw new Error(error.message);
+    }
+  }
+
+  async updateProfile(profile: { displayName?: string; photoURL?: string }): Promise<void> {
+    if (!this.auth.currentUser) {
+      throw new Error('No user is signed in');
+    }
+
+    try {
+      await updateFirebaseProfile(this.auth.currentUser, profile);
+    } catch (error: any) {
+      console.error('Update profile error:', error);
+      throw new Error(error.message);
+    }
+  }
+
+  async updatePassword(currentPassword: string, newPassword: string): Promise<void> {
+    const user = this.auth.currentUser;
+    if (!user || !user.email) {
+      throw new Error('No user is signed in or email is missing');
+    }
+
+    try {
+      // Re-authenticate user before password change
+      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      await reauthenticateWithCredential(user, credential);
+      
+      // Update password
+      await updateFirebasePassword(user, newPassword);
+    } catch (error: any) {
+      console.error('Update password error:', error);
+      throw new Error(error.message);
+    }
+  }
+
+  async sendEmailVerification(): Promise<void> {
+    if (!this.auth.currentUser) {
+      throw new Error('No user is signed in');
+    }
+
+    try {
+      await sendVerificationEmail(this.auth.currentUser);
+    } catch (error: any) {
+      console.error('Send email verification error:', error);
+      throw new Error(error.message);
+    }
   }
 }
 

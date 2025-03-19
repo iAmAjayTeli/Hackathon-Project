@@ -1,28 +1,17 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import Layout from './components/Layout';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Landing from './pages/Landing';
+import Auth from './components/Auth';
+import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import ActiveCalls from './pages/ActiveCalls';
 import Analytics from './pages/Analytics';
-import Team from './pages/Team';
-import Auth from './components/Auth';
-import { firebaseService } from './services/FirebaseService';
+import Settings from './pages/Settings';
 
-function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+function PrivateRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
 
-  useEffect(() => {
-    const unsubscribe = firebaseService.onAuthStateChange((user) => {
-      setIsAuthenticated(!!user);
-      setIsLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -30,39 +19,61 @@ function App() {
     );
   }
 
+  if (!user) {
+    return <Navigate to="/auth?mode=signin" />;
+  }
+
+  return <>{children}</>;
+}
+
+function PublicRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (user) {
+    return <Navigate to="/dashboard" />;
+  }
+
+  return <>{children}</>;
+}
+
+function App() {
   return (
     <Router>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Landing />} />
-        <Route
-          path="/auth"
-          element={
-            isAuthenticated ? (
-              <Navigate to="/dashboard" replace />
-            ) : (
-              <Auth onAuthStateChange={setIsAuthenticated} />
-            )
-          }
-        />
-
-        {/* Protected routes */}
-        <Route
-          path="/*"
-          element={
-            isAuthenticated ? (
-              <Layout />
-            ) : (
-              <Navigate to="/" replace />
-            )
-          }
-        >
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="active-calls" element={<ActiveCalls />} />
-          <Route path="analytics" element={<Analytics />} />
-          <Route path="team" element={<Team />} />
-        </Route>
-      </Routes>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route
+            path="/auth"
+            element={
+              <PublicRoute>
+                <Auth />
+              </PublicRoute>
+            }
+          />
+          
+          {/* Protected Routes */}
+          <Route
+            element={
+              <PrivateRoute>
+                <Layout />
+              </PrivateRoute>
+            }
+          >
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/active-calls" element={<ActiveCalls />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/settings" element={<Settings />} />
+          </Route>
+        </Routes>
+      </AuthProvider>
     </Router>
   );
 }
