@@ -78,6 +78,15 @@ interface AdvancedAnalytics {
   };
 }
 
+interface UserProfile {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL?: string;
+  createdAt: Date;
+  lastUpdated: Date;
+}
+
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -120,12 +129,25 @@ class FirebaseService {
   async signUp(email: string, password: string, name: string): Promise<void> {
     try {
       const userCredential = await createUserWithEmailAndPassword(this.auth, email, password);
-      await updateFirebaseProfile(userCredential.user, {
+      const user = userCredential.user;
+      
+      // Update Firebase Auth profile
+      await updateFirebaseProfile(user, {
         displayName: name
       });
-    } catch (error: any) {
-      console.error('Sign up error:', error);
-      throw new Error(error.message);
+
+      // Create user document in Firestore
+      await setDoc(doc(this.db, 'users', user.uid), {
+        uid: user.uid,
+        email: user.email,
+        displayName: name,
+        photoURL: null,
+        createdAt: new Date(),
+        lastUpdated: new Date()
+      });
+    } catch (error) {
+      console.error('Error in signUp:', error);
+      throw error;
     }
   }
 
@@ -512,35 +534,58 @@ class FirebaseService {
     return (positiveCount / emotions.length) * 100;
   }
 
-  async updateProfilePicture(file: File): Promise<void> {
-    if (!this.auth.currentUser) {
-      throw new Error('No user is signed in');
-    }
+  async updateProfile(profile: { displayName?: string; photoURL?: string }): Promise<void> {
+    const user = this.auth.currentUser;
+    if (!user) throw new Error('No authenticated user');
 
     try {
-      const storageRef = ref(this.storage, `profile_pictures/${this.auth.currentUser.uid}`);
-      await uploadBytes(storageRef, file);
-      const photoURL = await getDownloadURL(storageRef);
-      
-      await updateFirebaseProfile(this.auth.currentUser, {
-        photoURL
+      // Update Firebase Auth profile
+      await updateFirebaseProfile(user, profile);
+
+      // Update Firestore document
+      const userRef = doc(this.db, 'users', user.uid);
+      await updateDoc(userRef, {
+        ...profile,
+        lastUpdated: new Date()
       });
-    } catch (error: any) {
-      console.error('Update profile picture error:', error);
-      throw new Error(error.message);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      throw error;
     }
   }
 
-  async updateProfile(profile: { displayName?: string; photoURL?: string }): Promise<void> {
-    if (!this.auth.currentUser) {
-      throw new Error('No user is signed in');
+  async getUserProfile(userId: string): Promise<UserProfile | null> {
+    try {
+      const userDoc = await getDoc(doc(this.db, 'users', userId));
+      if (userDoc.exists()) {
+        return userDoc.data() as UserProfile;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting user profile:', error);
+      throw error;
     }
+  }
+
+  async updateProfilePicture(dataUrl: string): Promise<void> {
+    const user = this.auth.currentUser;
+    if (!user) throw new Error('No authenticated user');
 
     try {
-      await updateFirebaseProfile(this.auth.currentUser, profile);
-    } catch (error: any) {
-      console.error('Update profile error:', error);
-      throw new Error(error.message);
+      // Update Firebase Auth profile
+      await updateFirebaseProfile(user, {
+        photoURL: dataUrl
+      });
+
+      // Update Firestore document
+      const userRef = doc(this.db, 'users', user.uid);
+      await updateDoc(userRef, {
+        photoURL: dataUrl,
+        lastUpdated: new Date()
+      });
+    } catch (error) {
+      console.error('Error updating profile picture:', error);
+      throw error;
     }
   }
 
