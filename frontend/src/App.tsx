@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import ActiveCalls from './pages/ActiveCalls';
 import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
+import Chatbot from './pages/Chatbot';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -71,6 +72,7 @@ function App() {
             <Route path="/active-calls" element={<ActiveCalls />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/chatbot" element={<Chatbot />} />
           </Route>
         </Routes>
       </AuthProvider>

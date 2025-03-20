@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { geminiService } from '../services/GeminiService';
-import ChatInterface from '../components/ChatInterface';
 import {
   ChartBarIcon,
   ChatBubbleLeftRightIcon,
@@ -135,12 +133,6 @@ export default function Dashboard() {
                 </a>
               ))}
             </div>
-          </div>
-
-          {/* Chat Interface */}
-          <div className="mt-8">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">AI Assistant</h2>
-            <ChatInterface />
           </div>
         </div>
       </main>
