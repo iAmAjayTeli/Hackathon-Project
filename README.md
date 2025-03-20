@@ -1,143 +1,122 @@
-# EmpathicCall
+# EmpathicCall - AI-Powered Call Center Analytics
 
-Real-time emotion detection for customer service interactions. Enhance customer service quality by providing agents with live emotional feedback and actionable insights.
+EmpathicCall is an innovative call center analytics platform that combines real-time emotion detection with AI-powered insights to enhance customer service interactions.
 
-## Features
+## 🌟 Key Features
 
-- Real-time voice input processing
-- Live emotion detection
-- Dynamic agent feedback
-- Call analytics and summaries
-- Interactive emotion timeline
-- User authentication and management
-- Call recording and playback
-- Detailed analytics dashboard
-- Multiple audio visualization styles
+### Real-Time Analytics Dashboard
+- **Stats Grid**: View key metrics at a glance
+- **Emotion Distribution**: Interactive doughnut chart showing emotion patterns
+- **Weekly Trends**: Bar chart displaying performance trends
+- **AI-Powered Insights**: Real-time analysis using Gemini AI
 
-## Tech Stack
+### Emotion Detection
+- Real-time emotion analysis during calls
+- Support for multiple data sources:
+  - Voice analysis
+  - Text sentiment
+  - Facial expressions (optional)
+- Instant feedback for call center agents
 
-### Frontend
-- React.js with TypeScript
-- Tailwind CSS
-- Web Audio API
-- WebSocket client
-- Firebase Authentication
-- Firebase Storage
-- Firebase Firestore
+### AI Integration
+- **Gemini AI Integration**: Leveraging the Gemini 2.0 Flash model
+- **Smart Insights Generation**: 
+  - Trend analysis
+  - Pattern recognition
+  - Actionable recommendations
+- **Confidence Scoring**: AI-generated insights with confidence metrics
 
-### Backend
-- FastAPI (Python)
-- WebSockets
-- MongoDB
-- Pre-trained emotion detection model integration
+### User Interface
+- Modern, responsive design
+- Intuitive navigation
+- Real-time data updates
+- Interactive charts and visualizations
 
-## Project Structure
-
-```
-empathiccall/
-├── frontend/           # React frontend application
-│   ├── src/
-│   │   ├── components/ # React components
-│   │   ├── services/   # Service classes
-│   │   ├── hooks/      # Custom React hooks
-│   │   └── pages/      # Page components
-├── backend/           # FastAPI backend server
-├── docker/            # Docker configuration files
-└── docs/             # Project documentation
-```
-
-## Setup Instructions
+## 🚀 Getting Started
 
 ### Prerequisites
+- Node.js (v16 or higher)
 - Python 3.8+
-- Node.js 16+
-- MongoDB
-- Poetry (Python dependency management)
+- Poetry (Python package manager)
 - Firebase account
+- Google Cloud account with Gemini API access
 
-### Firebase Setup
-1. Create a new Firebase project at https://console.firebase.google.com
-2. Enable Authentication, Storage, and Firestore
-3. Create a web app in your Firebase project
-4. Copy the Firebase configuration
+### Environment Setup
 
-### Frontend Setup
-1. Navigate to the frontend directory:
-   ```bash
-   cd "D:\Hackathon Project\frontend"
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Create a `.env` file with Firebase configuration:
-   ```
-   VITE_FIREBASE_API_KEY=your_api_key
-   VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-   VITE_FIREBASE_PROJECT_ID=your_project_id
-   VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-   VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-   VITE_FIREBASE_APP_ID=your_app_id
-   VITE_WS_URL=ws://localhost:8000/ws
-   ```
-4. Start the development server:
-   ```bash
-   npm run dev
-   ```
+1. Frontend Setup (.env file in frontend directory):
+```env
+# WebSocket and API Configuration
+VITE_WS_URL=ws://localhost:8000/ws
 
-### Backend Setup
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
-2. Install dependencies using Poetry:
-   ```bash
-   poetry install
-   ```
-3. Create a `.env` file:
-   ```
-   MONGODB_URI=mongodb://localhost:27017/empathiccall
-   API_KEY_EMOTION_SERVICE=your_api_key_here
-   FIREBASE_ADMIN_SDK_PATH=path/to/firebase-admin-sdk.json
-   ```
-4. Start the FastAPI server:
-   ```bash
-   poetry run uvicorn app.main:app --reload
-   ```
+# Firebase Configuration
+VITE_FIREBASE_API_KEY=your_firebase_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_domain
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+VITE_FIREBASE_MEASUREMENT_ID=your_measurement_id
 
-## Development
+# Gemini AI Configuration
+VITE_GEMINI_API_KEY=your_gemini_api_key
+```
 
-1. Backend API runs on `http://localhost:8000`
-2. Frontend development server runs on `http://localhost:5173`
-3. API documentation available at `http://localhost:8000/docs`
+2. Backend Setup:
+```bash
+cd backend
+poetry install
+python -m uvicorn app.main:app --reload
+```
 
-## Features
+3. Frontend Setup:
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-### Authentication
-- Email/password authentication
-- Protected routes and API endpoints
-- User session management
+## 🔧 Technical Stack
 
-### Call Recording
-- Real-time audio capture
-- Automatic call recording
-- Recording playback
-- Recording metadata storage
+### Frontend
+- React with TypeScript
+- Vite for build tooling
+- TailwindCSS for styling
+- Chart.js for data visualization
+- Firebase Authentication
+- Gemini AI integration
 
-### Analytics
-- Call duration metrics
-- Emotion breakdown
-- Trend analysis
-- Performance insights
+### Backend
+- FastAPI
+- WebSocket support
+- Emotion detection service
+- Real-time data processing
 
-### Audio Visualization
-- Multiple visualization styles:
-  - Frequency bars
-  - Waveform
-  - Circular visualization
-- Real-time volume meter
-- Customizable colors
+## 🔐 Security Features
+- Secure authentication with Firebase
+- Protected API endpoints
+- Environment variable management
+- Secure WebSocket connections
 
-## License
+## 📊 Analytics Features
+- Real-time data processing
+- Historical data analysis
+- Custom insight generation
+- Trend visualization
+- Emotion pattern recognition
 
-MIT License - See LICENSE file for details 
+## 🤝 Contributing
+We welcome contributions! Please see our contributing guidelines for more details.
+
+## 📝 License
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙏 Acknowledgments
+- Google Cloud Platform for Gemini AI
+- Firebase for authentication
+- All contributors and supporters
+
+## 📞 Support
+For support, please open an issue in the repository or contact our support team.
+
+---
+Built with ❤️ for better customer service 
