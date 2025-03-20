@@ -71,7 +71,7 @@ class GeminiService {
         body: JSON.stringify({
           contents: [{
             parts: [{
-              text: `${prompt}\n\nPlease format your response with:\n- Clear paragraphs separated by line breaks\n- Bullet points using proper markdown syntax\n- Headers using markdown syntax (e.g., # for main headers)\n- Code blocks when showing technical content`
+              text: `You are an AI assistant for EmpathicCall, a call center application. Respond naturally to: ${prompt}`
             }]
           }],
           generationConfig: {
@@ -100,25 +100,7 @@ class GeminiService {
         throw new Error('Invalid response format from API');
       }
 
-      // Process the response text to ensure proper formatting
-      let text = data.candidates[0].content.parts[0].text;
-      
-      // Replace multiple consecutive newlines with two newlines
-      text = text.replace(/\n{3,}/g, '\n\n');
-      
-      // Ensure bullet points have proper spacing
-      text = text.replace(/^\s*\*\s*/gm, '• ');
-      
-      // Ensure headers have proper spacing
-      text = text.replace(/^#+\s*/gm, (match: string) => `\n${match}`);
-      
-      // Add line breaks before lists
-      text = text.replace(/(\n[^•\n]+\n)(•)/g, '$1\n$2');
-      
-      // Remove any trailing/leading whitespace
-      text = text.trim();
-
-      return text;
+      return data.candidates[0].content.parts[0].text;
     } catch (error) {
       console.error('Error in generateResponse:', error);
       throw error;
