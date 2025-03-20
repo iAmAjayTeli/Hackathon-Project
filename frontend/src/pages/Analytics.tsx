@@ -96,19 +96,49 @@ export default function Analytics() {
   }, [user]);
 
   const fetchAnalytics = async () => {
-    if (!user) return;
+    if (!user) {
+      setError('Please sign in to view analytics');
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
       setError(null);
       const data = await firebaseService.getAdvancedAnalytics(user.uid);
+      
+      // Format the stats with the actual data
+      stats.forEach(stat => {
+        switch (stat.name) {
+          case 'Total Calls':
+            stat.value = data.totalCalls.toString();
+            break;
+          case 'Average Call Duration':
+            const avgMinutes = Math.floor(data.averageCallDuration / 60);
+            const avgSeconds = Math.round(data.averageCallDuration % 60);
+            stat.value = `${avgMinutes}m ${avgSeconds}s`;
+            break;
+          case 'Positive Sentiment Rate':
+            stat.value = `${Math.round(data.performanceMetrics.positiveEmotionPercentage)}%`;
+            break;
+          // Customer Satisfaction is left as is since it might be calculated differently
+        }
+      });
+
       setAnalytics(data);
       await generateAIInsights(data);
     } catch (err) {
+      console.error('Error fetching analytics:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch analytics');
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatDuration = (duration: number): string => {
+    const minutes = Math.floor(duration / 60);
+    const seconds = Math.round(duration % 60);
+    return `${minutes}m ${seconds}s`;
   };
 
   const generateAIInsights = async (data: AnalyticsData) => {

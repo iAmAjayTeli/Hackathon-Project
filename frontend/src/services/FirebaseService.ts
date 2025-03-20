@@ -52,11 +52,9 @@ interface CallData extends DocumentData {
     confidence: number;
     timestamp: number;
   }>;
-  metadata: {
-    startTime: number;
-    endTime: number;
-    duration: number;
-  };
+  startTime: number;
+  endTime: number;
+  duration: number;
   createdAt: string;
 }
 
@@ -209,12 +207,14 @@ class FirebaseService {
       await uploadBytes(audioRef, callData.audioBlob);
       const audioUrl = await getDownloadURL(audioRef);
 
-      // Save call metadata to Firestore
+      // Save call metadata to Firestore with flattened structure
       const callRef = await addDoc(collection(this.db, 'calls'), {
         userId,
         audioUrl,
         emotions: callData.emotions,
-        ...callData.metadata,
+        startTime: callData.metadata.startTime,
+        endTime: callData.metadata.endTime,
+        duration: callData.metadata.duration,
         createdAt: new Date().toISOString()
       });
 
@@ -233,10 +233,10 @@ class FirebaseService {
       // Calculate analytics
       const analytics = {
         totalCalls: calls.length,
-        totalDuration: calls.reduce((acc, call) => acc + call.metadata.duration, 0),
+        totalDuration: calls.reduce((acc, call) => acc + (call.duration || 0), 0),
         emotionBreakdown: this.calculateEmotionBreakdown(calls),
         averageCallDuration: calls.length > 0 
-          ? calls.reduce((acc, call) => acc + call.metadata.duration, 0) / calls.length 
+          ? calls.reduce((acc, call) => acc + (call.duration || 0), 0) / calls.length 
           : 0
       };
 
@@ -315,20 +315,18 @@ class FirebaseService {
   async getAdvancedAnalytics(userId: string): Promise<AdvancedAnalytics> {
     try {
       const calls = await this.getUserCalls(userId);
-      
-      // Basic metrics
       const totalCalls = calls.length;
-      const totalDuration = calls.reduce((acc, call) => acc + call.metadata.duration, 0);
+      const totalDuration = calls.reduce((acc, call) => acc + (call.duration || 0), 0);
       const averageCallDuration = totalCalls > 0 ? totalDuration / totalCalls : 0;
 
-      // Emotion breakdown
-      const emotionBreakdown = this.calculateEmotionBreakdown(calls);
-
-      // Trend analysis
+      // Calculate trend data
       const trendData = this.calculateTrendData(calls);
 
-      // Performance metrics
+      // Calculate performance metrics
       const performanceMetrics = this.calculatePerformanceMetrics(calls);
+
+      // Calculate emotion breakdown
+      const emotionBreakdown = this.calculateEmotionBreakdown(calls);
 
       return {
         totalCalls,
@@ -421,33 +419,31 @@ class FirebaseService {
     const trendMap = new Map<string, {
       callCount: number;
       totalDuration: number;
-      emotions: Record<string, number>;
+      emotions: Array<{ name: string; confidence: number; }>;
     }>();
 
-    calls.forEach((call: CallData) => {
-      const date = new Date(call.metadata.startTime).toISOString().split('T')[0];
+    // Group calls by date
+    calls.forEach(call => {
+      const date = new Date(call.createdAt).toISOString().split('T')[0];
       const current = trendMap.get(date) || {
         callCount: 0,
         totalDuration: 0,
-        emotions: {}
+        emotions: []
       };
 
-      current.callCount++;
-      current.totalDuration += call.metadata.duration;
-      
-      call.emotions.forEach(emotion => {
-        current.emotions[emotion.name] = (current.emotions[emotion.name] || 0) + 1;
-      });
+      current.callCount += 1;
+      current.totalDuration += (call.duration || 0);
+      current.emotions = current.emotions.concat(call.emotions || []);
 
       trendMap.set(date, current);
     });
 
+    // Convert map to array and calculate averages
     return Array.from(trendMap.entries()).map(([date, data]) => ({
       date,
       callCount: data.callCount,
       averageDuration: data.totalDuration / data.callCount,
-      dominantEmotion: Object.entries(data.emotions)
-        .sort((a, b) => b[1] - a[1])[0]?.[0] || 'neutral'
+      dominantEmotion: this.getDominantEmotion(data.emotions)
     }));
   }
 
@@ -458,15 +454,21 @@ class FirebaseService {
     const callsByHour = new Array(24).fill(0);
 
     calls.forEach(call => {
-      const hour = new Date(call.metadata.startTime).getHours();
-      callsByHour[hour]++;
+      if (call.startTime) {
+        const hour = new Date(call.startTime).getHours();
+        callsByHour[hour]++;
+      }
 
-      call.emotions.forEach(emotion => {
-        totalEmotions++;
-        if (positiveEmotions.includes(emotion.name.toLowerCase())) {
-          positiveCount++;
-        }
-      });
+      if (call.emotions && Array.isArray(call.emotions)) {
+        call.emotions.forEach(emotion => {
+          if (emotion && emotion.name) {
+            totalEmotions++;
+            if (positiveEmotions.includes(emotion.name.toLowerCase())) {
+              positiveCount++;
+            }
+          }
+        });
+      }
     });
 
     const peakCallTimes = callsByHour
@@ -475,7 +477,7 @@ class FirebaseService {
       .slice(0, 5);
 
     return {
-      positiveEmotionPercentage: (positiveCount / totalEmotions) * 100,
+      positiveEmotionPercentage: totalEmotions > 0 ? (positiveCount / totalEmotions) * 100 : 0,
       averageCallsPerDay: calls.length / this.getUniqueDays(calls),
       peakCallTimes
     };
@@ -484,7 +486,7 @@ class FirebaseService {
   private getUniqueDays(calls: CallData[]): number {
     const uniqueDays = new Set(
       calls.map(call => 
-        new Date(call.metadata.startTime).toISOString().split('T')[0]
+        new Date(call.startTime).toISOString().split('T')[0]
       )
     );
     return uniqueDays.size || 1;
@@ -506,8 +508,8 @@ class FirebaseService {
 
       return [
         call.id,
-        new Date(call.metadata.startTime).toISOString(),
-        call.metadata.duration / 1000, // Convert to seconds
+        new Date(call.startTime).toISOString(),
+        call.duration / 1000, // Convert to seconds
         dominantEmotion,
         positivePercentage.toFixed(2),
         call.emotions.length
@@ -521,17 +523,23 @@ class FirebaseService {
   }
 
   private getDominantEmotion(emotions: Array<{ name: string; confidence: number }>) {
+    if (!emotions || !Array.isArray(emotions) || emotions.length === 0) {
+      return 'neutral';
+    }
     return emotions.reduce((prev, current) => 
-      current.confidence > prev.confidence ? current : prev
+      (current && current.confidence > prev.confidence) ? current : prev
     ).name;
   }
 
   private getPositiveEmotionPercentage(emotions: Array<{ name: string; confidence: number }>) {
+    if (!emotions || !Array.isArray(emotions) || emotions.length === 0) {
+      return 0;
+    }
     const positiveEmotions = ['happy', 'satisfied', 'pleased'];
     const positiveCount = emotions.filter(e => 
-      positiveEmotions.includes(e.name.toLowerCase())
+      e && e.name && positiveEmotions.includes(e.name.toLowerCase())
     ).length;
-    return (positiveCount / emotions.length) * 100;
+    return emotions.length > 0 ? (positiveCount / emotions.length) * 100 : 0;
   }
 
   async updateProfile(profile: { displayName?: string; photoURL?: string }): Promise<void> {
