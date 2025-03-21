@@ -11,10 +11,14 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="EmpathicCall API")
 
-# Enable CORS
+# Enable CORS with specific origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with your frontend URL
+    allow_origins=[
+        "https://empathic-call.vercel.app",
+        "http://localhost:5173",
+        "http://localhost:5174"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -46,7 +50,7 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-@app.get("/health")
+@app.get("/api/health")
 def health_check():
     """Simple health check endpoint"""
     logger.info("Health check request received")
@@ -81,7 +85,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
     except WebSocketDisconnect:
         manager.disconnect(client_id)
 
-@app.get("/")
+@app.get("/api")
 async def root():
     logger.info("Root endpoint request received")
     return {

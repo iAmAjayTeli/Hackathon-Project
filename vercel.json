@@ -5,8 +5,12 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/api/assemblyai/:path*",
-      "destination": "https://api.assemblyai.com/v2/:path*"
+      "source": "/api/:path*",
+      "destination": "https://empathic-call-production.up.railway.app/api/:path*"
+    },
+    {
+      "source": "/ws/:path*",
+      "destination": "wss://empathic-call-production.up.railway.app/ws/:path*"
     },
     {
       "source": "/(.*)",
