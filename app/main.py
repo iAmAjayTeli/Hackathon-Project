@@ -15,14 +15,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize services lazily
-emotion_service = None
-
-def get_emotion_service():
-    global emotion_service
-    if emotion_service is None:
-        emotion_service = EmotionDetectionService()
-    return emotion_service
+# Initialize services
+emotion_service = EmotionDetectionService()
 
 # Store active WebSocket connections
 class ConnectionManager:
@@ -42,9 +36,13 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+@app.get("/health")
+def health_check():
+    """Simple health check endpoint"""
+    return {"status": "ok"}
+
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
-    service = get_emotion_service()  # Lazy initialization
     await manager.connect(websocket, client_id)
     try:
         while True:
@@ -52,10 +50,10 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
             audio_data = await websocket.receive_bytes()
             
             # Process audio and detect emotion
-            emotion_result = await service.process_audio(audio_data)
+            emotion_result = await emotion_service.process_audio(audio_data)
             
             # Get suggestions based on detected emotion
-            suggestions = service.get_emotion_suggestions(emotion_result["emotion"])
+            suggestions = emotion_service.get_emotion_suggestions(emotion_result["emotion"])
             
             # Combine results
             response = {
@@ -75,14 +73,4 @@ async def root():
         "message": "Welcome to EmpathicCall API",
         "version": "0.1.0",
         "status": "running"
-    }
-
-# Health check endpoint that doesn't require ML models
-@app.get("/health")
-async def health_check():
-    return {
-        "status": "healthy",
-        "services": {
-            "api": "operational"
-        }
     } 
