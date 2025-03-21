@@ -9,7 +9,7 @@ PID=$!
 # Wait for the application to be ready
 echo "Waiting for application to start..."
 for i in {1..30}; do
-    if curl -s http://localhost:$PORT/health > /dev/null; then
+    if curl -s http://localhost:$PORT/api/health > /dev/null; then
         echo "Application is ready!"
         # Keep the script running with the main process
         wait $PID
