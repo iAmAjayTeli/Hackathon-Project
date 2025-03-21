@@ -61,31 +61,31 @@ const quickActions: QuickAction[] = [
     name: 'Start Call',
     description: 'Begin a new customer service call',
     icon: PhoneIcon,
-    href: '/active-calls'
+    href: 'active-calls'
   },
   {
     name: 'AI Assistant',
     description: 'Chat with our AI for insights and help',
     icon: SparklesIcon,
-    href: '/chatbot'
+    href: 'chatbot'
   },
   {
     name: 'Emotion Report',
     description: 'View detailed emotion analysis',
     icon: ChatBubbleLeftRightIcon,
-    href: '/emotion-report'
+    href: 'emotion-report'
   },
   {
     name: 'Analytics',
     description: 'Check performance metrics',
     icon: ChartPieIcon,
-    href: '/analytics'
+    href: 'analytics'
   },
   {
     name: 'Settings',
     description: 'Configure your preferences',
     icon: CogIcon,
-    href: '/settings'
+    href: 'settings'
   }
 ];
 
@@ -321,7 +321,10 @@ export default function Dashboard() {
               {quickActions.map((action) => (
                 <button
                   key={action.name}
-                  onClick={() => navigate(action.href)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate(action.href, { replace: false });
+                  }}
                   className="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-blue-500 rounded-lg shadow hover:shadow-lg transition-all duration-200 text-left"
                 >
                   <div>
