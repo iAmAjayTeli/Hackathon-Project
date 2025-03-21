@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { firebaseService } from '../services/FirebaseService';
 import { Line } from 'react-chartjs-2';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   ChartBarIcon,
   ChatBubbleLeftRightIcon,
@@ -91,6 +91,7 @@ const quickActions: QuickAction[] = [
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [greeting, setGreeting] = useState('');
   const [stats, setStats] = useState<DashboardStats>({
     totalCalls: 0,
@@ -318,10 +319,10 @@ export default function Dashboard() {
             <h2 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {quickActions.map((action) => (
-                <Link
+                <button
                   key={action.name}
-                  to={action.href}
-                  className="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-blue-500 rounded-lg shadow hover:shadow-lg transition-all duration-200"
+                  onClick={() => navigate(action.href)}
+                  className="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-blue-500 rounded-lg shadow hover:shadow-lg transition-all duration-200 text-left"
                 >
                   <div>
                     <span className="rounded-lg inline-flex p-3 bg-blue-50 text-blue-700 ring-4 ring-white">
@@ -348,7 +349,7 @@ export default function Dashboard() {
                       <path d="M20 4h1a1 1 0 00-1-1v1zm-1 12a1 1 0 102 0h-2zM8 3a1 1 0 000 2V3zM3.293 19.293a1 1 0 101.414 1.414l-1.414-1.414zM19 4v12h2V4h-2zm1-1H8v2h12V3zm-.707.293l-16 16 1.414 1.414 16-16-1.414-1.414z" />
                     </svg>
                   </span>
-                </Link>
+                </button>
               ))}
             </div>
           </div>
