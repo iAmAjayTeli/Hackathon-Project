@@ -7,6 +7,10 @@
     {
       "source": "/api/assemblyai/:path*",
       "destination": "https://api.assemblyai.com/v2/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
