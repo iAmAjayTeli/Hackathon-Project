@@ -2,6 +2,13 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { firebaseService } from '../services/FirebaseService';
 
+interface UserProfile {
+  displayName: string | null;
+  email: string | null;
+  photoURL?: string;
+  emailVerified: boolean;
+}
+
 export default function Settings() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -12,7 +19,7 @@ export default function Settings() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -20,7 +27,14 @@ export default function Settings() {
       if (user?.uid) {
         try {
           const profile = await firebaseService.getUserProfile(user.uid);
-          setUserProfile(profile);
+          if (profile) {
+            setUserProfile({
+              displayName: profile.displayName || null,
+              email: profile.email || null,
+              photoURL: profile.photoURL,
+              emailVerified: profile.emailVerified
+            });
+          }
         } catch (err) {
           console.error('Error loading user profile:', err);
         }
@@ -38,7 +52,6 @@ export default function Settings() {
     setSuccess(null);
 
     try {
-      // Convert image file to data URL
       const reader = new FileReader();
       reader.onloadend = async () => {
         try {
@@ -46,7 +59,12 @@ export default function Settings() {
           await firebaseService.updateProfilePicture(dataUrl);
           setSuccess('Profile picture updated successfully!');
           // Update local state
-          setUserProfile(prev => ({ ...prev, photoURL: dataUrl }));
+          if (userProfile) {
+            setUserProfile({
+              ...userProfile,
+              photoURL: dataUrl
+            });
+          }
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Failed to update profile picture');
         } finally {
@@ -75,7 +93,12 @@ export default function Settings() {
       setSuccess('Name updated successfully!');
       setIsEditingName(false);
       // Update local state
-      setUserProfile(prev => ({ ...prev, displayName: newName }));
+      if (userProfile) {
+        setUserProfile({
+          ...userProfile,
+          displayName: newName
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update name');
     } finally {
@@ -113,7 +136,25 @@ export default function Settings() {
 
     try {
       await firebaseService.sendEmailVerification();
-      setSuccess('Verification email sent! Please check your inbox.');
+      setSuccess('Verification email sent! Please check your inbox and reload the page after verifying.');
+      
+      // Set up a timer to check for verification
+      const checkVerification = setInterval(async () => {
+        // Reload the Firebase user to get the latest status
+        await firebaseService.reloadUser();
+        const currentUser = firebaseService.getCurrentUser();
+        if (currentUser?.emailVerified && userProfile) {
+          clearInterval(checkVerification);
+          // Update local state
+          setUserProfile({
+            ...userProfile,
+            emailVerified: true
+          });
+        }
+      }, 3000); // Check every 3 seconds
+
+      // Clear interval after 2 minutes
+      setTimeout(() => clearInterval(checkVerification), 120000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send verification email');
     } finally {

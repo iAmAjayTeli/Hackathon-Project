@@ -41,6 +41,8 @@ interface AppUser {
   uid: string;
   email: string | null;
   displayName: string | null;
+  photoURL?: string | null;
+  emailVerified: boolean;
 }
 
 interface CallData extends DocumentData {
@@ -81,6 +83,7 @@ interface UserProfile {
   email: string | null;
   displayName: string | null;
   photoURL?: string;
+  emailVerified: boolean;
   createdAt: Date;
   lastUpdated: Date;
 }
@@ -120,7 +123,9 @@ class FirebaseService {
     return {
       uid: user.uid,
       email: user.email,
-      displayName: user.displayName
+      displayName: user.displayName,
+      photoURL: user.photoURL,
+      emailVerified: user.emailVerified
     };
   }
 
@@ -182,7 +187,9 @@ class FirebaseService {
         const appUser: AppUser = {
           uid: user.uid,
           email: user.email,
-          displayName: user.displayName
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          emailVerified: user.emailVerified
         };
         callback(appUser);
       } else {
@@ -580,15 +587,26 @@ class FirebaseService {
     if (!user) throw new Error('No authenticated user');
 
     try {
+      // Convert data URL to blob
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      
+      // Upload to Firebase Storage
+      const storageRef = ref(this.storage, `profile-pictures/${user.uid}`);
+      await uploadBytes(storageRef, blob);
+      
+      // Get the download URL
+      const downloadURL = await getDownloadURL(storageRef);
+
       // Update Firebase Auth profile
       await updateFirebaseProfile(user, {
-        photoURL: dataUrl
+        photoURL: downloadURL
       });
 
       // Update Firestore document
       const userRef = doc(this.db, 'users', user.uid);
       await updateDoc(userRef, {
-        photoURL: dataUrl,
+        photoURL: downloadURL,
         lastUpdated: new Date()
       });
     } catch (error) {
@@ -627,6 +645,12 @@ class FirebaseService {
       console.error('Send email verification error:', error);
       throw new Error(error.message);
     }
+  }
+
+  async reloadUser(): Promise<void> {
+    const user = this.auth.currentUser;
+    if (!user) throw new Error('No authenticated user');
+    await user.reload();
   }
 }
 
