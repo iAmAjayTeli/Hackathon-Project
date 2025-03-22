@@ -2,6 +2,8 @@
 
 EmpathicCall is an innovative call center analytics platform that combines real-time emotion detection with AI-powered insights to enhance customer service interactions.
 
+Check Project live here:- https://hackathon-project-git-main-iamajaytelis-projects.vercel.app/
+
 ## 🌟 Key Features
 
 ### Real-Time Analytics Dashboard
