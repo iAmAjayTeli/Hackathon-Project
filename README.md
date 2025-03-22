@@ -63,9 +63,12 @@ VITE_GEMINI_API_KEY=your_gemini_api_key
 
 2. Backend Setup:
 ```bash
-cd backend
+cd "DirectoryName"
 poetry install
-python -m uvicorn app.main:app --reload
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 3. Frontend Setup:
